@@ -1,0 +1,468 @@
+<title>DVC–MLflow Model Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one plain reading column, like a typed lab report. The version picker sits directly above everything it changes. */
+:root {
+  --mode: light;
+  --bg: #fbfbfa;
+  --surface: #ffffff;
+  --ink: #131518;
+  --ink-2: #4b4f57;
+  --muted: #80858e;
+  --line: #e2e3e5;
+  --axis: #c3c5c9;
+  --accent: #1f5fb8;
+  --accent-wash: #eaf1fb;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --step--1: 0.8125rem; --step-0: 0.9375rem; --step-1: 1.125rem; --step-2: 1.5rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --mode: dark; color-scheme: dark;
+    --bg: #111213; --surface: #1a1b1c; --ink: #f1f2f3; --ink-2: #c4c7cc; --muted: #8b9098;
+    --line: #2c2e31; --axis: #41444a; --accent: #6ea6f0; --accent-wash: #1c2a3d;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  }
+}
+:root[data-theme="dark"] {
+  --mode: dark; color-scheme: dark;
+  --bg: #111213; --surface: #1a1b1c; --ink: #f1f2f3; --ink-2: #c4c7cc; --muted: #8b9098;
+  --line: #2c2e31; --axis: #41444a; --accent: #6ea6f0; --accent-wash: #1c2a3d;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: var(--step-0); line-height: 1.55; margin: 0; }
+.wrap { max-width: 64rem; margin: 0 auto; padding-inline: 16px; padding-block: 2rem 3rem; display: grid; gap: 2.5rem; }
+h1, h2, h3 { text-wrap: balance; margin: 0; color: var(--ink); }
+h1 { font-size: var(--step-2); font-weight: 600; line-height: 1.25; }
+h2 { font-size: var(--step-1); font-weight: 600; }
+h3 { font-size: var(--step-0); font-weight: 600; }
+p { margin: 0; max-width: 68ch; }
+section { display: grid; gap: 1rem; min-width: 0; }
+section + section { border-top: 1px solid var(--line); padding-top: 2rem; }
+.eyebrow { font-size: var(--step--1); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.head { display: grid; gap: 0.5rem; }
+.byline, .note { color: var(--ink-2); font-size: var(--step--1); }
+code, .mono { font-family: var(--font-data); font-size: 0.92em; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* summary figures */
+.figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.fig { background: var(--surface); padding: 0.75rem 0.9rem; display: grid; gap: 0.15rem; }
+.fig .k { font-size: var(--step--1); color: var(--ink-2); }
+.fig .v { font-size: 1.6rem; font-weight: 600; line-height: 1.1; }
+
+/* pipeline */
+.flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0.5rem; }
+.flow .box { flex: 1 1 0; min-width: 7rem; border: 1px solid var(--line); background: var(--surface); padding: 0.6rem 0.75rem; display: grid; gap: 0.2rem; align-content: start; }
+.flow .box b { font-weight: 600; font-size: var(--step--1); }
+.flow .box span { font-size: var(--step--1); color: var(--ink-2); }
+.flow .arrow { align-self: center; color: var(--muted); font-size: 1.1rem; }
+
+/* tables */
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--line); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: var(--step--1); }
+th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { color: var(--ink-2); font-weight: 500; }
+tbody tr:last-child td { border-bottom: 0; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+td.best { font-weight: 600; }
+td.best::after { content: " ▲"; font-size: 0.7em; color: var(--muted); }
+tr.current td { background: var(--accent-wash); }
+.sw { display: inline-block; width: 0.8rem; height: 0.8rem; border-radius: 2px; margin-right: 0.45rem; vertical-align: -0.1rem; }
+.swl { display: inline-block; width: 1.1rem; height: 2px; margin-right: 0.45rem; vertical-align: 0.25rem; }
+
+/* picker */
+.seg { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.seg button { font: inherit; font-size: var(--step--1); color: var(--ink); background: var(--surface); border: 1px solid var(--axis); padding: 0.4rem 0.8rem; cursor: pointer; border-radius: 3px; }
+.seg button:hover { border-color: var(--accent); }
+.seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pickbar { display: grid; gap: 0.6rem; padding: 0.9rem; background: var(--surface); border: 1px solid var(--line); }
+.pickbar label { font-weight: 600; }
+
+/* charts */
+.chart { position: relative; background: var(--surface); border: 1px solid var(--line); padding: 0.5rem; min-width: 0; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { fill: var(--muted); font-family: var(--font-body); font-size: 12px; }
+.legend { display: flex; flex-wrap: wrap; gap: 0.35rem 1.2rem; font-size: var(--step--1); color: var(--ink-2); }
+.tip { position: absolute; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--axis); box-shadow: 0 2px 8px rgba(0,0,0,0.12); padding: 0.45rem 0.6rem; font-size: 12px; line-height: 1.5; white-space: nowrap; z-index: 2; }
+.tip b { font-weight: 600; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: 1.25rem; align-items: start; }
+.two > * { min-width: 0; display: grid; gap: 0.6rem; }
+
+/* confusion matrices */
+.cms { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13.5rem), 1fr)); gap: 1rem; }
+.cm { margin: 0; background: var(--surface); border: 1px solid var(--line); padding: 0.75rem; display: grid; gap: 0.5rem; }
+.cm figcaption { font-size: var(--step--1); font-weight: 600; }
+.cm-grid { display: grid; grid-template-columns: auto 1fr 1fr; gap: 2px; font-size: 11.5px; }
+.cm-grid .h { color: var(--ink-2); display: flex; align-items: center; justify-content: center; text-align: center; padding: 0.2rem; }
+.cm-grid .r { justify-content: flex-end; text-align: right; }
+.cm-grid .cell { aspect-ratio: 1.5; display: grid; place-content: center; text-align: center; border-radius: 2px; }
+.cm-grid .cell b { font-size: 1.25rem; font-weight: 600; font-variant-numeric: tabular-nums; display: block; }
+
+dl.defs { display: grid; grid-template-columns: minmax(7rem, max-content) 1fr; gap: 0.5rem 1.25rem; margin: 0; }
+dl.defs dt { font-weight: 600; }
+dl.defs dd { margin: 0; color: var(--ink-2); min-width: 0; }
+pre { margin: 0; background: var(--surface); border: 1px solid var(--line); padding: 0.8rem 1rem; overflow-x: auto; font-family: var(--font-data); font-size: var(--step--1); line-height: 1.6; }
+footer { color: var(--muted); font-size: var(--step--1); border-top: 1px solid var(--line); padding-top: 1rem; }
+@media (max-width: 34rem) { dl.defs { grid-template-columns: 1fr; } dl.defs dd { margin-bottom: 0.4rem; } .flow .arrow { display: none; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+<!--SPLIT-->
+<main class="wrap">
+  <header class="head">
+    <p class="eyebrow">Machine learning lab · MLOps</p>
+    <h1>Breast cancer classifier: data versions with DVC, experiments with MLflow</h1>
+    <p class="byline" id="byline"></p>
+  </header>
+
+  <section aria-labelledby="sum-h">
+    <h2 id="sum-h">Summary</h2>
+    <p id="sum-text"></p>
+    <div class="figs" id="sum-figs"></div>
+  </section>
+
+  <section aria-labelledby="flow-h">
+    <h2 id="flow-h">How the pieces connect</h2>
+    <div class="flow">
+      <div class="box"><b>data/train.csv</b><span>grows in batches: v1 → v4</span></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="box"><b>DVC</b><span><code>dvc add</code> stores the file in its cache and writes a small .dvc receipt with the md5 hash</span></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="box"><b>Git</b><span>commits the receipt and tags it <code>v1.0</code> … <code>v4.0</code></span></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="box"><b>train.py</b><span>asks DVC for the data at a tag, trains 4 models</span></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="box"><b>MLflow server</b><span>backend store: SQLite (<code>mlflow.db</code>); artifact store: plots and models</span></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="box"><b>This report</b><span>every number is read back from MLflow</span></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="ver-h">
+    <h2 id="ver-h">Data versions tracked by DVC</h2>
+    <div class="tbl-wrap"><table id="vtable"></table></div>
+    <p class="note" id="test-note"></p>
+  </section>
+
+  <section aria-labelledby="res-h">
+    <h2 id="res-h">Results for one data version</h2>
+    <div class="pickbar">
+      <label id="vpick-l">Which data version would you like to see?</label>
+      <div class="seg" id="vpick" role="group" aria-labelledby="vpick-l"></div>
+      <p class="note" id="vinfo"></p>
+    </div>
+    <h3>Performance metrics</h3>
+    <div class="tbl-wrap"><table id="mtable"></table></div>
+    <p class="note">▲ marks the best value in each column. Malignant is the positive class.</p>
+    <div class="two">
+      <div>
+        <h3>ROC curves</h3>
+        <div class="chart" id="roc"></div>
+        <div class="legend" id="roc-legend"></div>
+      </div>
+      <div>
+        <h3>Confusion matrices</h3>
+        <div class="cms" id="cms"></div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="lc-h">
+    <h2 id="lc-h">How the scores change as the data grows</h2>
+    <div class="seg" id="mpick" role="group" aria-label="Metric"></div>
+    <div class="chart" id="lc"></div>
+    <div class="legend" id="lc-legend"></div>
+    <p class="note" id="lc-note"></p>
+  </section>
+
+  <section aria-labelledby="def-h">
+    <h2 id="def-h">What each metric means</h2>
+    <p class="note">TP = malignant tumours correctly flagged, TN = benign correctly cleared, FP = benign wrongly flagged, FN = malignant missed.</p>
+    <dl class="defs">
+      <dt>Accuracy</dt><dd>(TP + TN) / all patients. How many predictions were right overall.</dd>
+      <dt>Precision</dt><dd>TP / (TP + FP). When the model says “malignant”, how often it is right.</dd>
+      <dt>Recall</dt><dd>TP / (TP + FN). Also called sensitivity. Of the real malignant tumours, how many the model caught.</dd>
+      <dt>F1-score</dt><dd>2 × Precision × Recall / (Precision + Recall). One number that balances precision and recall.</dd>
+      <dt>Specificity</dt><dd>TN / (TN + FP). Of the real benign tumours, how many the model correctly cleared.</dd>
+      <dt>ROC-AUC</dt><dd>Area under the ROC curve. The ROC curve plots recall against the false positive rate for every possible threshold. 1.0 is perfect, 0.5 is random guessing.</dd>
+    </dl>
+  </section>
+
+  <section aria-labelledby="rep-h">
+    <h2 id="rep-h">Reproduce it</h2>
+<pre>python run_all.py                  # whole pipeline: DVC versions, MLflow runs, this report
+python train.py --version v2.0     # train again on one data version
+streamlit run app.py               # the GUI: pick a data version, train, see the metrics
+git checkout v1.0 &amp;&amp; dvc checkout  # bring back data version v1.0 in the folder
+git checkout main &amp;&amp; dvc checkout  # and return to the newest version</pre>
+  </section>
+
+  <footer id="foot"></footer>
+</main>
+
+<script type="application/json" id="report-data">/*__DATA__*/</script>
+<script>
+(function () {
+  "use strict";
+  var D = JSON.parse(document.getElementById("report-data").textContent);
+  var $ = function (s) { return document.querySelector(s); };
+  var MODELS = D.models;
+  var MET = D.metrics;
+  var LAB = D.metric_labels;
+  var versions = D.versions.map(function (v) { return v.version; });
+  var curV = versions[versions.length - 1];
+  var curM = "f1";
+  var NS = "http://www.w3.org/2000/svg";
+
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function f3(v) { return (v == null || isNaN(v)) ? "–" : Number(v).toFixed(3); }
+  function slot(m) { return "var(--s" + (MODELS.indexOf(m) + 1) + ")"; }
+  function vinfo(v) { return D.versions.filter(function (x) { return x.version === v; })[0]; }
+  function runsFor(v) {
+    return MODELS.map(function (m) { return D.runs.filter(function (r) { return r.version === v && r.model === m; })[0]; })
+      .filter(Boolean);
+  }
+  function best(runs) {
+    return runs.slice().sort(function (a, b) {
+      return (b.metrics.f1 - a.metrics.f1) || (b.metrics.roc_auc - a.metrics.roc_auc);
+    })[0];
+  }
+  function isDark() { return getComputedStyle(document.documentElement).getPropertyValue("--mode").trim() === "dark"; }
+  function svgPoint(svg, e) {
+    var pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+    return pt.matrixTransform(svg.getScreenCTM().inverse());
+  }
+  function placeTip(tip, box, e) {
+    var r = box.getBoundingClientRect();
+    var x = e.clientX - r.left + 14, y = e.clientY - r.top + 14;
+    tip.hidden = false;
+    var w = tip.offsetWidth, h = tip.offsetHeight;
+    if (x + w > r.width - 4) x = e.clientX - r.left - w - 14;
+    if (y + h > r.height - 4) y = e.clientY - r.top - h - 14;
+    tip.style.left = Math.max(4, x) + "px"; tip.style.top = Math.max(4, y) + "px";
+  }
+
+  /* ---------- header, summary, versions ---------- */
+  $("#byline").textContent = D.meta.author + " · " + D.meta.srn + " · generated " + D.meta.generated +
+    " from MLflow experiment “" + D.meta.experiment + "”";
+
+  var last = vinfo(curV), lastRuns = runsFor(curV), b = best(lastRuns);
+  $("#sum-text").innerHTML = "Four models were trained on each of the " + versions.length +
+    " data versions and every run was logged to MLflow. On the newest data (<b>" + esc(curV) + "</b>, " +
+    last.train_rows + " training rows) the best model by F1-score is <b>" + esc(b.model) + "</b>:";
+  $("#sum-figs").innerHTML = MET.map(function (k) {
+    return '<div class="fig"><span class="k">' + LAB[k] + '</span><span class="v">' + f3(b.metrics[k]) + "</span></div>";
+  }).join("");
+
+  var vt = "<thead><tr><th>Version (Git tag)</th><th>Git commit</th><th class='n'>Training rows</th><th class='n'>New rows</th>" +
+    "<th class='n'>Malignant / benign</th><th>DVC md5 of train.csv</th></tr></thead><tbody>";
+  D.versions.forEach(function (v) {
+    vt += "<tr data-v='" + esc(v.version) + "'><td class='mono'>" + esc(v.version) + "</td><td class='mono'>" + esc(v.commit) +
+      "</td><td class='n'>" + v.train_rows + "</td><td class='n'>+" + v.new_rows + "</td><td class='n'>" +
+      v.malignant + " / " + v.benign + "</td><td class='mono'>" + esc(v.train_md5) + "</td></tr>";
+  });
+  $("#vtable").innerHTML = vt + "</tbody>";
+  $("#test-note").innerHTML = "Every version is tested on the same fixed test set: <b>" + last.test_rows +
+    " patients</b> (DVC md5 <span class='mono'>" + esc(last.test_md5) + "</span>). " +
+    "So the versions are compared fairly, and one patient is worth " +
+    (100 / last.test_rows).toFixed(1) + " percentage points of accuracy.";
+
+  /* ---------- version picker ---------- */
+  $("#vpick").innerHTML = versions.map(function (v) {
+    return "<button type='button' id='vbtn-" + esc(v.replace(/\W/g, "")) + "' data-v='" + esc(v) + "'>" + esc(v) +
+      " · " + vinfo(v).train_rows + " rows</button>";
+  }).join("");
+  $("#vpick").addEventListener("click", function (e) {
+    var btn = e.target.closest("button"); if (!btn) return;
+    curV = btn.getAttribute("data-v"); renderVersion();
+  });
+
+  function renderVersion() {
+    Array.prototype.forEach.call(document.querySelectorAll("#vpick button"), function (btn) {
+      btn.setAttribute("aria-pressed", btn.getAttribute("data-v") === curV ? "true" : "false");
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("#vtable tbody tr"), function (tr) {
+      tr.classList.toggle("current", tr.getAttribute("data-v") === curV);
+    });
+    var v = vinfo(curV);
+    $("#vinfo").innerHTML = "<b>" + esc(curV) + "</b> · Git commit <span class='mono'>" + esc(v.commit) + "</span> · " +
+      v.train_rows + " training rows (" + v.new_rows + " new in this version) · train.csv md5 <span class='mono'>" +
+      esc(v.train_md5.slice(0, 12)) + "…</span>";
+    var runs = runsFor(curV);
+    renderMetricsTable(runs);
+    renderRoc(runs);
+    renderCms(runs);
+  }
+
+  function renderMetricsTable(runs) {
+    var bestVal = {};
+    MET.forEach(function (k) { bestVal[k] = Math.max.apply(null, runs.map(function (r) { return r.metrics[k]; })); });
+    var h = "<thead><tr><th>Model</th>" + MET.map(function (k) { return "<th class='n'>" + LAB[k] + "</th>"; }).join("") +
+      "<th>MLflow run ID</th></tr></thead><tbody>";
+    runs.forEach(function (r) {
+      h += "<tr><td><span class='sw' style='background:" + slot(r.model) + "'></span>" + esc(r.model) + "</td>" +
+        MET.map(function (k) {
+          var isBest = Math.abs(r.metrics[k] - bestVal[k]) < 1e-9;
+          return "<td class='n" + (isBest ? " best" : "") + "'>" + f3(r.metrics[k]) + "</td>";
+        }).join("") + "<td class='mono'>" + esc(r.run_id.slice(0, 12)) + "…</td></tr>";
+    });
+    $("#mtable").innerHTML = h + "</tbody>";
+  }
+
+  /* ---------- ROC chart ---------- */
+  function tprAt(f, t, x) {
+    var y = 0;
+    for (var i = 0; i < f.length; i++) {
+      if (f[i] <= x) { y = Math.max(y, t[i]); continue; }
+      if (i > 0 && f[i] > f[i - 1]) y = Math.max(y, t[i - 1] + (t[i] - t[i - 1]) * (x - f[i - 1]) / (f[i] - f[i - 1]));
+      break;
+    }
+    return y;
+  }
+  function renderRoc(runs) {
+    var W = 460, H = 380, L = 46, R = 12, T = 10, B = 44;
+    var X = function (v) { return L + v * (W - L - R); };
+    var Y = function (v) { return T + (1 - v) * (H - T - B); };
+    var s = "<svg viewBox='0 0 " + W + " " + H + "' role='img' aria-label='ROC curves for " + esc(curV) + "'>";
+    for (var i = 0; i <= 5; i++) {
+      var g = i / 5;
+      s += "<line x1='" + X(0) + "' x2='" + X(1) + "' y1='" + Y(g) + "' y2='" + Y(g) + "' style='stroke:var(--line);stroke-width:1'/>";
+      s += "<line y1='" + Y(0) + "' y2='" + Y(1) + "' x1='" + X(g) + "' x2='" + X(g) + "' style='stroke:var(--line);stroke-width:1'/>";
+      s += "<text x='" + (L - 8) + "' y='" + (Y(g) + 4) + "' text-anchor='end'>" + g.toFixed(1) + "</text>";
+      s += "<text x='" + X(g) + "' y='" + (H - B + 18) + "' text-anchor='middle'>" + g.toFixed(1) + "</text>";
+    }
+    s += "<line x1='" + X(0) + "' y1='" + Y(0) + "' x2='" + X(1) + "' y2='" + Y(1) + "' style='stroke:var(--axis);stroke-width:1'/>";
+    s += "<text x='" + ((X(0) + X(1)) / 2) + "' y='" + (H - 6) + "' text-anchor='middle'>False positive rate (1 − specificity)</text>";
+    s += "<text transform='translate(12," + ((Y(0) + Y(1)) / 2) + ") rotate(-90)' text-anchor='middle'>True positive rate (recall)</text>";
+    runs.forEach(function (r) {
+      var pts = r.roc.fpr.map(function (f, j) { return X(f).toFixed(1) + "," + Y(r.roc.tpr[j]).toFixed(1); }).join(" ");
+      s += "<polyline points='" + pts + "' style='fill:none;stroke:" + slot(r.model) + ";stroke-width:2;stroke-linejoin:round;stroke-linecap:round'/>";
+    });
+    s += "<line class='xh' y1='" + Y(0) + "' y2='" + Y(1) + "' style='stroke:var(--muted);stroke-width:1' visibility='hidden'/>";
+    s += "<rect class='hit' x='" + X(0) + "' y='" + Y(1) + "' width='" + (X(1) - X(0)) + "' height='" + (Y(0) - Y(1)) + "' style='fill:transparent'/>";
+    s += "</svg><div class='tip' hidden></div>";
+    var box = $("#roc"); box.innerHTML = s;
+    var svg = box.querySelector("svg"), tip = box.querySelector(".tip"), xh = box.querySelector(".xh");
+    function move(e) {
+      var p = svgPoint(svg, e), x = Math.min(1, Math.max(0, (p.x - L) / (W - L - R)));
+      xh.setAttribute("x1", X(x)); xh.setAttribute("x2", X(x)); xh.setAttribute("visibility", "visible");
+      tip.innerHTML = "<b>False positive rate " + x.toFixed(2) + "</b><br>" + runs.map(function (r) {
+        return "<span class='swl' style='background:" + slot(r.model) + "'></span>" + esc(r.model) + ": recall " + tprAt(r.roc.fpr, r.roc.tpr, x).toFixed(3);
+      }).join("<br>");
+      placeTip(tip, box, e);
+    }
+    var hit = box.querySelector(".hit");
+    hit.addEventListener("pointermove", move);
+    hit.addEventListener("pointerleave", function () { tip.hidden = true; xh.setAttribute("visibility", "hidden"); });
+    $("#roc-legend").innerHTML = runs.map(function (r) {
+      return "<span><span class='swl' style='background:" + slot(r.model) + "'></span>" + esc(r.model) + " (AUC " + f3(r.metrics.roc_auc) + ")</span>";
+    }).join("") + "<span><span class='swl' style='background:var(--axis)'></span>random guess (AUC 0.500)</span>";
+  }
+
+  /* ---------- confusion matrices ---------- */
+  var RAMP_LIGHT = ["#cde2fb", "#b7d3f6", "#9ec5f4", "#86b6ef", "#6da7ec", "#5598e7", "#3987e5", "#2a78d6", "#256abf", "#1c5cab", "#184f95", "#104281", "#0d366b"];
+  var RAMP_DARK = ["#1f2733", "#1d3150", "#184f95", "#1c5cab", "#256abf", "#2a78d6", "#3987e5", "#5598e7", "#6da7ec", "#86b6ef", "#9ec5f4", "#b7d3f6", "#cde2fb"];
+  function lum(hex) {
+    var c = [1, 3, 5].map(function (i) { var v = parseInt(hex.substr(i, 2), 16) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  }
+  function renderCms(runs) {
+    var ramp = isDark() ? RAMP_DARK : RAMP_LIGHT;
+    var max = Math.max.apply(null, runs.map(function (r) { return Math.max(r.cm.tn, r.cm.fp, r.cm.fn, r.cm.tp); }));
+    function cell(label, n) {
+      var bg = ramp[Math.round((ramp.length - 1) * (max ? n / max : 0))];
+      var fg = lum(bg) > 0.28 ? "#0b0b0b" : "#ffffff";
+      return "<div class='cell' style='background:" + bg + ";color:" + fg + "'><b>" + n + "</b>" + label + "</div>";
+    }
+    $("#cms").innerHTML = runs.map(function (r) {
+      var c = r.cm;
+      return "<figure class='cm'><figcaption><span class='sw' style='background:" + slot(r.model) + "'></span>" + esc(r.model) + "</figcaption>" +
+        "<div class='cm-grid'><div></div><div class='h'>Predicted benign</div><div class='h'>Predicted malignant</div>" +
+        "<div class='h r'>Actual benign</div>" + cell("TN", c.tn) + cell("FP", c.fp) +
+        "<div class='h r'>Actual malignant</div>" + cell("FN", c.fn) + cell("TP", c.tp) + "</div></figure>";
+    }).join("");
+  }
+
+  /* ---------- learning curve ---------- */
+  $("#mpick").innerHTML = MET.map(function (k) {
+    return "<button type='button' id='mbtn-" + k + "' data-m='" + k + "'>" + LAB[k] + "</button>";
+  }).join("");
+  $("#mpick").addEventListener("click", function (e) {
+    var btn = e.target.closest("button"); if (!btn) return;
+    curM = btn.getAttribute("data-m"); renderLc();
+  });
+  function renderLc() {
+    Array.prototype.forEach.call(document.querySelectorAll("#mpick button"), function (btn) {
+      btn.setAttribute("aria-pressed", btn.getAttribute("data-m") === curM ? "true" : "false");
+    });
+    var W = 760, H = 320, L = 50, R = 24, T = 14, B = 52;
+    var vals = D.runs.map(function (r) { return r.metrics[curM]; });
+    var lo = Math.min.apply(null, vals), step = (1 - lo) > 0.2 ? 0.05 : 0.02;
+    lo = Math.max(0, Math.floor((lo - step / 2) / step) * step);
+    var hi = 1;
+    var X = function (i) { return L + (versions.length === 1 ? 0.5 : i / (versions.length - 1)) * (W - L - R); };
+    var Y = function (v) { return T + (hi - v) / (hi - lo) * (H - T - B); };
+    var s = "<svg viewBox='0 0 " + W + " " + H + "' role='img' aria-label='" + LAB[curM] + " for each data version'>";
+    for (var g = lo; g <= hi + 1e-9; g += step) {
+      s += "<line x1='" + L + "' x2='" + (W - R) + "' y1='" + Y(g) + "' y2='" + Y(g) + "' style='stroke:var(--line);stroke-width:1'/>";
+      s += "<text x='" + (L - 8) + "' y='" + (Y(g) + 4) + "' text-anchor='end'>" + g.toFixed(2) + "</text>";
+    }
+    versions.forEach(function (v, i) {
+      s += "<text x='" + X(i) + "' y='" + (H - B + 20) + "' text-anchor='middle' style='fill:var(--ink-2)'>" + esc(v) + "</text>";
+      s += "<text x='" + X(i) + "' y='" + (H - B + 36) + "' text-anchor='middle'>" + vinfo(v).train_rows + " rows</text>";
+    });
+    MODELS.forEach(function (m) {
+      var pts = versions.map(function (v, i) {
+        var r = D.runs.filter(function (x) { return x.version === v && x.model === m; })[0];
+        return r ? [X(i), Y(r.metrics[curM])] : null;
+      }).filter(Boolean);
+      s += "<polyline points='" + pts.map(function (p) { return p[0].toFixed(1) + "," + p[1].toFixed(1); }).join(" ") +
+        "' style='fill:none;stroke:" + slot(m) + ";stroke-width:2;stroke-linejoin:round;stroke-linecap:round'/>";
+      pts.forEach(function (p) {
+        s += "<circle cx='" + p[0].toFixed(1) + "' cy='" + p[1].toFixed(1) + "' r='4.5' style='fill:" + slot(m) + ";stroke:var(--surface);stroke-width:2'/>";
+      });
+    });
+    s += "<line class='xh' y1='" + T + "' y2='" + (H - B) + "' style='stroke:var(--muted);stroke-width:1' visibility='hidden'/>";
+    s += "<rect class='hit' x='" + (L - 20) + "' y='" + T + "' width='" + (W - L - R + 40) + "' height='" + (H - T - B) + "' style='fill:transparent'/>";
+    s += "</svg><div class='tip' hidden></div>";
+    var box = $("#lc"); box.innerHTML = s;
+    var svg = box.querySelector("svg"), tip = box.querySelector(".tip"), xh = box.querySelector(".xh");
+    var hit = box.querySelector(".hit");
+    hit.addEventListener("pointermove", function (e) {
+      var p = svgPoint(svg, e), idx = 0, dmin = 1e9;
+      versions.forEach(function (v, i) { var d = Math.abs(X(i) - p.x); if (d < dmin) { dmin = d; idx = i; } });
+      var v = versions[idx];
+      xh.setAttribute("x1", X(idx)); xh.setAttribute("x2", X(idx)); xh.setAttribute("visibility", "visible");
+      var rs = runsFor(v).sort(function (a, b2) { return b2.metrics[curM] - a.metrics[curM]; });
+      tip.innerHTML = "<b>" + esc(v) + " · " + vinfo(v).train_rows + " training rows</b><br>" + rs.map(function (r) {
+        return "<span class='swl' style='background:" + slot(r.model) + "'></span>" + esc(r.model) + ": " + f3(r.metrics[curM]);
+      }).join("<br>");
+      placeTip(tip, box, e);
+    });
+    hit.addEventListener("pointerleave", function () { tip.hidden = true; xh.setAttribute("visibility", "hidden"); });
+    $("#lc-legend").innerHTML = MODELS.map(function (m) {
+      return "<span><span class='swl' style='background:" + slot(m) + "'></span>" + esc(m) + "</span>";
+    }).join("");
+    $("#lc-note").textContent = LAB[curM] + " of each model on the same test set, one point per data version. " +
+      "The vertical axis starts at " + lo.toFixed(2) + ", not 0, so small differences are visible.";
+  }
+
+  $("#foot").innerHTML = "Every number on this page was read from the MLflow tracking server at <span class='mono'>" +
+    esc(D.meta.tracking_uri) + "</span> (backend store <span class='mono'>" + esc(D.meta.backend_store) + "</span>), " +
+    D.runs.length + " model runs across " + versions.length + " DVC data versions.";
+
+  renderVersion();
+  renderLc();
+  // repaint the confusion-matrix shading when the theme changes
+  try {
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () { renderCms(runsFor(curV)); });
+    new MutationObserver(function () { renderCms(runsFor(curV)); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  } catch (e) { /* older browsers: shading stays as first drawn */ }
+})();
+</script>

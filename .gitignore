@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# MLflow lives outside Git (it has its own database + artifact store)
+mlflow.db
+mlartifacts/
+mlruns/
+mlflow_server.log
+
+# generated output (a copy is kept in docs/)
+/report.html

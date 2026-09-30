@@ -1,0 +1,9 @@
+# Install with:  pip install -r requirements.txt
+dvc>=3.0,<4
+mlflow>=3.0,<4
+scikit-learn>=1.3
+pandas>=2.0
+matplotlib>=3.7
+streamlit>=1.50
+altair>=5.0
+pyyaml>=6.0

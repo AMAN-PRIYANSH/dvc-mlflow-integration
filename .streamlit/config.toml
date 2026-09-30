@@ -1,0 +1,12 @@
+[server]
+headless = true          # don't ask for an e-mail on first start
+
+[browser]
+gatherUsageStats = false
+
+[client]
+toolbarMode = "minimal"  # hide the "Deploy" button
+
+[theme]
+base = "light"
+primaryColor = "#1f5fb8"
