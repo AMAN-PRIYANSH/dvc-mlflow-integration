@@ -24,6 +24,7 @@ import os
 import warnings
 
 os.environ.setdefault("MLFLOW_DISABLE_AGENT_HINT", "1")
+os.environ.setdefault("MLFLOW_ENABLE_ARTIFACTS_PROGRESS_BAR", "false")
 
 import matplotlib
 matplotlib.use("Agg")                     # draw plots without opening a window
