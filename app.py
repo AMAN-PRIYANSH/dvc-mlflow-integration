@@ -26,7 +26,6 @@ import mlflow
 import mlflow.artifacts
 import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components
 from mlflow.tracking import MlflowClient
 
 import config
@@ -294,4 +293,8 @@ with tab_report:
         html = open(path, encoding="utf-8").read()
         st.download_button("Download report.html", html, file_name="report.html",
                            mime="text/html")
-        components.html(html, height=1600, scrolling=True)
+        if hasattr(st, "iframe"):          # newer Streamlit
+            st.iframe(html, height=1600)
+        else:
+            import streamlit.components.v1 as components
+            components.html(html, height=1600, scrolling=True)
