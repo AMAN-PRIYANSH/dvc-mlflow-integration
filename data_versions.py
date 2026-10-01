@@ -11,7 +11,9 @@ So:
 
 A "version" is simply a Git tag: v1.0, v2.0, v3.0, v4.0.
 """
+import configparser
 import subprocess
+import sys
 
 import dvc.api
 import pandas as pd
@@ -24,6 +26,27 @@ def _git(*args: str) -> str:
     out = subprocess.run(["git", *args], cwd=config.ROOT, capture_output=True,
                          text=True, check=True)
     return out.stdout.strip()
+
+
+def ensure_local_remote() -> bool:
+    """Point DVC at dvc_storage/ in .dvc/config.local, once per clone.
+
+    .dvc/config says url = ../dvc_storage. For an old Git tag DVC reads that path
+    from inside the tag, where it points to the drive root (C:\\dvc_storage), so
+    `dvc fetch --all-tags` finds nothing. The local setting lives in the real folder,
+    so it works for every tag. Returns True if it had to set it.
+    """
+    dvc_dir = config.ROOT / ".dvc"
+    if not dvc_dir.is_dir():
+        return False
+    local = configparser.ConfigParser()
+    local.read(dvc_dir / "config.local", encoding="utf-8")
+    if any('remote "storage"' in s and local.has_option(s, "url") for s in local.sections()):
+        return False
+    subprocess.run([sys.executable, "-m", "dvc", "remote", "modify", "--local", "storage",
+                    "url", config.DVC_REMOTE_DIR], cwd=config.ROOT, capture_output=True,
+                   text=True, check=True)
+    return True
 
 
 def list_versions() -> list[str]:

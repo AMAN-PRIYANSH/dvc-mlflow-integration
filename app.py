@@ -45,6 +45,7 @@ LABELS = config.METRIC_LABELS
 # ------------------------------------------------------------------ backend
 @st.cache_resource(show_spinner="Starting the MLflow tracking server ...")
 def start_backend() -> bool:
+    data_versions.ensure_local_remote()   # lets DVC find dvc_storage/ for old tags too
     mlflow_server.start()
     mlflow.set_tracking_uri(config.TRACKING_URI)
     return True

@@ -176,6 +176,9 @@ def main():
 
     step(1, "Git + DVC set-up")
     setup_repo()
+    import data_versions
+    if data_versions.ensure_local_remote():   # lets DVC find dvc_storage/ for old tags too
+        print(f"  $ dvc remote modify --local storage url {config.DVC_REMOTE_DIR}")
 
     step(2, f"make data versions v1.0 ... v{config.N_VERSIONS}.0 with DVC")
     make_versions()

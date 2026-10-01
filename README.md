@@ -116,6 +116,7 @@ git clone https://github.com/AMAN-PRIYANSH/dvc-mlflow-integration.git
 cd dvc-mlflow-integration
 pip install -r requirements.txt
 dvc pull                    # get the newest data from the DVC remote
+dvc remote modify --local storage url dvc_storage   # one-time: lets DVC find the storage folder for old tags too
 dvc fetch --all-tags        # get every older data version too
 python run_all.py           # start MLflow, train on every version, build the report
 streamlit run app.py        # the GUI, at http://localhost:8501
